@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirCube Studio - 3D Hand Gesture Cube Creator & Painter</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Google Fonts for futuristic UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Three.js (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- MediaPipe Hands & Camera Utils (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <!-- App Container -->
+  <div id="app">
+    <!-- Background / PiP Video Element (Hidden logic, displayed on canvas) -->
+    <video id="webcam" playsinline muted autoplay></video>
+
+    <!-- 3D Three.js Canvas Container -->
+    <div id="canvas-3d-container"></div>
+
+    <!-- 2D Overlay Canvas for Hand Skeleton, Laser Cursor & HUD Feedback -->
+    <canvas id="canvas-hud"></canvas>
+
+    <!-- Air Cursor Element (Tracks fingertip in real-time) -->
+    <div id="air-cursor">
+      <div class="cursor-core"></div>
+      <div class="cursor-ring"></div>
+      <div class="cursor-label" id="cursor-label">Point</div>
+    </div>
+
+    <!-- Sci-Fi HUD Header -->
+    <header class="hud-header">
+      <div class="logo-group">
+        <div class="logo-icon">🧊</div>
+        <div class="logo-text">
+          <h1>AirCube <span class="accent-glow">Studio</span></h1>
+          <p class="subtitle">3D Hand Tracking & Texture Painter</p>
+        </div>
+      </div>
+
+      <div class="system-status">
+        <div class="status-chip" id="cam-status">
+          <span class="status-dot pulsing"></span>
+          <span class="status-text">Starting Camera...</span>
+        </div>
+        <div class="status-chip" id="hand-status">
+          <span class="status-dot"></span>
+          <span class="status-text">Looking for Hands...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Holographic Color Palette -->
+    <aside class="hud-palette" id="color-palette">
+      <div class="palette-header">
+        <span class="palette-title">BRUSH COLOR</span>
+        <div class="active-color-indicator" id="active-color-preview"></div>
+      </div>
+      <div class="palette-swatches">
+        <button class="swatch active" data-color="#ff0055" style="--swatch-color: #ff0055;" title="Neon Crimson"></button>
+        <button class="swatch" data-color="#00f2fe" style="--swatch-color: #00f2fe;" title="Cyber Cyan"></button>
+        <button class="swatch" data-color="#4facfe" style="--swatch-color: #4facfe;" title="Electric Blue"></button>
+        <button class="swatch" data-color="#00ff88" style="--swatch-color: #00ff88;" title="Matrix Green"></button>
+        <button class="swatch" data-color="#ffe600" style="--swatch-color: #ffe600;" title="Solar Yellow"></button>
+        <button class="swatch" data-color="#ff7b00" style="--swatch-color: #ff7b00;" title="Plasma Orange"></button>
+        <button class="swatch" data-color="#d900ff" style="--swatch-color: #d900ff;" title="Hyper Purple"></button>
+        <button class="swatch" data-color="#ffffff" style="--swatch-color: #ffffff;" title="Pure White"></button>
+        <button class="swatch swatch-eraser" data-color="#141824" style="--swatch-color: #141824;" title="Eraser">🧹</button>
+      </div>
+
+      <div class="brush-size-control">
+        <span class="brush-size-label">SIZE</span>
+        <div class="brush-size-pills">
+          <button class="pill-btn" data-size="8">S</button>
+          <button class="pill-btn active" data-size="18">M</button>
+          <button class="pill-btn" data-size="32">L</button>
+          <button class="pill-btn" data-size="56">XL</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mid-Air Action Toolbar (Left side) -->
+    <nav class="hud-actions" id="action-toolbar">
+      <div class="hud-group-label">ACTIONS</div>
+      
+      <button class="hud-btn secondary" id="btn-spawn-cube">
+        <span class="hud-btn-icon">✨</span>
+        <span class="hud-btn-text">New Cube</span>
+      </button>
+
+      <button class="hud-btn secondary" id="btn-clear-paint">
+        <span class="hud-btn-icon">🗑️</span>
+        <span class="hud-btn-text">Clear Faces</span>
+      </button>
+
+      <button class="hud-btn secondary" id="btn-auto-rotate">
+        <span class="hud-btn-icon">💫</span>
+        <span class="hud-btn-text">Auto Rotate</span>
+      </button>
+    </nav>
+
+    <!-- Webcam Mini PiP Card (Bottom Right) -->
+    <div class="webcam-pip-card" id="webcam-pip">
+      <div class="pip-header">
+        <span>FRONT CAMERA</span>
+        <span class="pip-indicator" id="pip-tag">LIVE</span>
+      </div>
+      <div class="pip-view">
+        <canvas id="pip-canvas"></canvas>
+      </div>
+      <div class="pip-footer">
+        <span id="detected-gesture-label">Gesture: Idle</span>
+      </div>
+    </div>
+
+    <!-- Quick Gesture Guides (Bottom Center Floating Card) -->
+    <div class="hud-guide-bar">
+      <div class="guide-item">
+        <span class="guide-icon">👆</span>
+        <span class="guide-desc"><strong>Fingertip</strong>: Paint directly on cube</span>
+      </div>
+      <div class="guide-item">
+        <span class="guide-icon">🤏</span>
+        <span class="guide-desc"><strong>Pinch</strong>: Drag to rotate cube</span>
+      </div>
+      <div class="guide-item">
+        <span class="guide-icon">✌️</span>
+        <span class="guide-desc"><strong>Peace Sign</strong>: Change colour</span>
+      </div>
+      <div class="guide-item">
+        <span class="guide-icon">👐</span>
+        <span class="guide-desc"><strong>Two Hands</strong>: Scale cube</span>
+      </div>
+    </div>
+
+    <!-- Floating Color Switch Toast Notification -->
+    <div id="color-toast" class="color-toast">
+      <span class="toast-dot" id="toast-color-dot"></span>
+      <span id="toast-color-name">Neon Crimson</span>
+    </div>
+
+    <!-- Audio Effects / Floating Ripples -->
+    <div id="touch-ripple-container"></div>
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script src="js/hand-tracker.js"></script>
+  <script src="js/cube-studio.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
