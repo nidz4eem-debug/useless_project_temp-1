@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Image Upload</h1>
+      <p class="subtitle">Upload an image to preview it below.</p>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form id="upload-form" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+      <label for="file-input" class="dropzone" id="dropzone">
+        <input type="file" name="image" id="file-input" accept="image/*" hidden />
+        <div class="dropzone-content">
+          <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3.75 3.75 0 014.161 4.616 4.5 4.5 0 01-1.41 8.775h-11.573z" />
+          </svg>
+          <p class="dropzone-text">Drag & drop an image here, or <span class="browse-link">browse</span></p>
+          <p class="dropzone-hint">PNG, JPG, JPEG, GIF, WEBP — up to 16MB</p>
+          <p class="file-name" id="file-name"></p>
+        </div>
+      </label>
+
+      <button type="submit" class="upload-btn" id="upload-btn" disabled>Upload Image</button>
+    </form>
+
+    {% if uploaded_image %}
+      <section class="result">
+        <h2>Uploaded Image</h2>
+        {% if original_name %}
+          <p class="original-name">{{ original_name }}</p>
+        {% endif %}
+
+        {% if face_count is not none %}
+          <div class="badge-row">
+            <div class="face-count-badge">
+              {% if face_count == 0 %}
+                No faces detected
+              {% elif face_count == 1 %}
+                1 face detected
+              {% else %}
+                {{ face_count }} faces detected
+              {% endif %}
+            </div>
+            {% if face_count > 0 %}
+              <div class="not-smiling-badge">
+                {% if not_smiling_count == 1 %}
+                  1 not smiling
+                {% else %}
+                  {{ not_smiling_count }} not smiling
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="image-preview">
+          <img src="{{ uploaded_image }}" alt="Uploaded image with detected faces outlined" />
+        </div>
+      </section>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
